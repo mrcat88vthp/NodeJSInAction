@@ -1,0 +1,14 @@
+{
+  "type": "module",
+  "dependencies": {
+    "express": "^5.1.0",
+    "jsonstream": "^1.0.3",
+    "mime": "^4.0.7",
+    "socket.io": "^4.8.1",
+    "stream-json": "^1.9.1",
+    "url": "^0.11.4"
+  },
+  "devDependencies": {
+    "@faker-js/faker": "^9.9.0"
+  }
+}
