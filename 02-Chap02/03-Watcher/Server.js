@@ -26,7 +26,7 @@ watcher.on('process', function process(file){
             }
             console.log(`✅ Processed: ${file} → ${file.toLowerCase()}`);
         });
-    }, 500);
+    }, 3000);
 });
 
 watcher.start();

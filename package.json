@@ -1,6 +1,7 @@
 {
   "type": "module",
   "dependencies": {
+    "chokidar": "^5.0.0",
     "express": "^5.1.0",
     "jsonstream": "^1.0.3",
     "mime": "^4.0.7",
