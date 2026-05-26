@@ -1,0 +1,55 @@
+<html>
+    <body>
+        <h1>Register Form - application/x-www-form-urlencoded </h1>
+
+        <form method="POST" action="/">
+            <input 
+                type="text" 
+                name="username" 
+                placeholder="Enter username"
+            />
+
+            <br><br>
+
+            <input 
+                type="email" 
+                name="email" 
+                placeholder="Enter email"
+            />
+
+            <br><br>            
+
+            <button type="submit">
+                Submit
+            </button>
+        </form>
+
+        <h1>Register Form - multipart/form-data </h1>
+
+        <form method="POST" action="/" enctype="multipart/form-data">
+            <input 
+                type="text" 
+                name="username" 
+                placeholder="Enter username"
+            />
+
+            <br><br>
+
+            <input 
+                type="email" 
+                name="email" 
+                placeholder="Enter email"
+            />
+
+            <br><br>
+
+            <input name="avatar"   type="file" />   <!-- file ảnh 2MB -->
+
+            <br><br>
+
+            <button type="submit">
+                Submit
+            </button>
+        </form>
+    </body>
+</html>
