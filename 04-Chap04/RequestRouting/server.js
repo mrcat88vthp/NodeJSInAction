@@ -136,7 +136,7 @@ function handleUpload(req, res) {
     function tryRespond() {
         if (!hasError) return;
         if (busboyDone && fileCount === 0) {
-            respond(200, null);
+            respond(303, null);
         }
     }
 
