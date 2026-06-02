@@ -8,11 +8,28 @@ import busboy from 'busboy';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const uploadDir = path.join(__dirname, 'uploads');
+const metaData_File = path.join(__dirname, 'upload.json');
 const maxFileSize = 10 * 1024 * 1024; // 2MB
 
 if (!fs.existsSync(uploadDir)){
     fs.mkdirSync(uploadDir);
 }
+
+if (fs.existsSync(metaData_File)){
+    fs.writeFileSync(metaData_File,'[]', 'utf-8');
+}
+
+// ─── Helpers metadata (lưu vào file JSON) ─────────────────────────────────────
+function readUploads() {
+    try {
+        return JSON.parse(fs.readFileSync(metaData_File, 'utf-8'));
+    }
+    catch {
+        return [];
+    }
+}
+
+
 
 // ─── Sanitize filename — chống path traversal ─────────────────────────────────
 function sanitizeFilename(filename) {
