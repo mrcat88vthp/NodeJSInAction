@@ -29,7 +29,24 @@ function readUploads() {
     }
 }
 
-
+function saveUpload(entry){
+    return new Promise ((resolve, reject) => {
+        try {
+            const uploads = readUploads();
+            entry.map(item => {
+                uploads.unshift(item);
+            });
+            
+            fs.writeFile(metaData_File, JSON.stringify(uploads, null, 2), 'utf-8', (err) => {
+                if (err) reject(err);
+                resolve();
+            })
+        }
+        catch (err) {
+            reject(err);
+        }
+    });
+}
 
 // ─── Sanitize filename — chống path traversal ─────────────────────────────────
 function sanitizeFilename(filename) {
@@ -85,13 +102,16 @@ function handleUpload(req, res) {
         }
 
         const safeName = sanitizeFilename(filename);
-        const finalName  = uniqueFilename(safeName);
+        const finalName = uniqueFilename(safeName);
         const savePath = path.join(uploadDir, finalName);
 
         console.log(`[file] nhận: ${filename} -> lưu: ${finalName} (${mimeType})`);
 
         fileCount++;
+        let fileSize = 0;
         const writeStream = fs.createWriteStream(savePath);
+
+        fileStream.on('data', (chunk) => { fileSize += chunk.length; });
 
         // pipe: request stream → busboy → writeStream (disk)
         // không có byte nào qua RAM của bạn
@@ -150,35 +170,58 @@ function handleUpload(req, res) {
 
     // ── chỉ respond khi busboy finish VÀ tất cả file đã ghi xong ────────────
     // (vì writeStream.finish có thể xảy ra sau bb.finish)
-    function tryRespond() {
-        if (!hasError) return;
-        if (busboyDone && fileCount === 0) {
+    async  function tryRespond() {
+        if (hasError) return;
+        if (!busboyDone || fileCount !== 0) return;
+
+        //validate username
+        const userName = (fields.username || '').trim();
+        if (!userName) {
+            return respond(400, 'invalid username');
+        }
+
+        if(files.length === 0) {
+            return respond(400, "None of files can upload");
+        }
+
+        // ── LƯU METADATA VÀO FILE JSON (async) ───────────────────────────────
+        // ĐÂY là lý do redirect phải nằm trong try/catch bên dưới
+        // không phải bên ngoài — phải chờ saveUpload() xong mới redirect
+        try {
+            await saveUpload(files);
+            // ✅ lưu xong → redirect
+            // nếu để respond ở ngoài try → user redirect trước khi ghi JSON xong
             respond(303, null);
+        }
+        catch (err) {
+            console.error("[saveUpload error", err.message);
+            respond(500, "Save files fail");
         }
     }
 
     function respond(statusCode, errMessage) {
-        if (!res.headerSent) return; // tránh gọi 2 lần
+        if (res.headerSent) return; // tránh gọi 2 lần
+        
+        if (statusCode == 303) {
+            // Post/Redirect/Get — tránh resubmit khi F5
+            const result = {
+                messsage: 'Upload files success',
+                fields,
+                files: files.map(f => ({
+                    fieldName: f.fieldName,
+                    originalName: f.originalName,
+                    saveAs: f.saveAs,
+                    mimeType: f.mimeType
+                })),
+            }
 
-        if (errMessage) {
-            res.writeHead(statusCode, {'Content-Type': 'text/plain; charset=utf-8'});
-            res.end(errMessage);
-            return;
+            res.writeHead(statusCode, { 'Location': req.url});
+            res.end();
+            return;            
         }
-
-        const result = {
-            messsage: 'Upload file thành công',
-            fields,
-            files: files.map(f => ({
-                fieldName: f.fieldName,
-                originalName: f.originalName,
-                saveAs: f.saveAs,
-                mimeType: f.mimeType
-            })),
-        }
-
-        res.writeHead(statusCode, { 'Content-Type': 'application/json; charset=utf-8'});
-        res.end(JSON.stringify(result, null, 2));
+        
+        res.writeHead(statusCode, {'Content-Type': 'text/plain; charset=utf-8'});
+        res.end(errMessage);
     }
 }
 
@@ -219,10 +262,6 @@ function showForm(res) {
 
     res.writeHead(200, { 'Content-Type': 'text/html' });
     res.end(html);
-}
-
-function saveFile(filePath) {
-    
 }
 
 // ======================
