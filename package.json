@@ -4,6 +4,7 @@
     "busboy": "^1.6.0",
     "chokidar": "^5.0.0",
     "express": "^5.1.0",
+    "formidable": "^3.5.4",
     "jsonstream": "^1.0.3",
     "mime": "^4.0.7",
     "multer": "^2.1.1",
