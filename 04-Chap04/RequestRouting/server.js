@@ -199,7 +199,7 @@ function handleUpload(req, res) {
     }
 
     function respond(statusCode, errMessage) {
-        if (res.headerSent) return; // tránh gọi 2 lần
+        if (res.headersSent) return; // tránh gọi 2 lần
         
         if (statusCode == 303) {
             // Post/Redirect/Get — tránh resubmit khi F5

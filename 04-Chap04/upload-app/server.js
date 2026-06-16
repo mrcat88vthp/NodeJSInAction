@@ -7,8 +7,10 @@ import busboy from 'busboy';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const uploadDir = path.join(__dirname, 'uploads');
+const publicDir = path.join(__dirname, 'public');
 const metaData_File = path.join(__dirname, 'upload.json');
 const maxFileSize = 10 * 1024 * 1024; // 2MB
+let filePath;
 
 if (!fs.existsSync(uploadDir)){
     fs.mkdirSync(uploadDir);
@@ -96,7 +98,7 @@ function handleUpload(req, res) {
         if (!allowedTypes.includes(mimeType)) {
             // drain stream để busboy không bị treo
             fileStream.resume();
-            console.warn(`[skip] ${filename} - MIME không hợp lệ: ${mimetype}`);
+            console.warn(`[skip] ${filename} - MIME không hợp lệ: ${mimeType}`);
             return;
         }
 
@@ -199,7 +201,7 @@ function handleUpload(req, res) {
     }
 
     function respond(statusCode, errMessage) {
-        if (res.headerSent) return; // tránh gọi 2 lần
+        if (res.headersSent) return; // tránh gọi 2 lần
         
         if (statusCode == 303) {
             // Post/Redirect/Get — tránh resubmit khi F5
@@ -224,42 +226,15 @@ function handleUpload(req, res) {
     }
 }
 
-function showForm(res) {
-    const html = `
-        <html>
-            <body>
-                <h1>Register Form</h1>
-
-                <form method="POST" action="/" enctype="multipart/form-data">
-                    <input 
-                        type="text" 
-                        name="username" 
-                        placeholder="Enter username"
-                    />
-
-                    <br><br>
-
-                    <input 
-                        type="email" 
-                        name="email" 
-                        placeholder="Enter email"
-                    />
-
-                    <br><br>
-
-                    <input name="avatar"   type="file" />   <!-- file ảnh 2MB -->
-
-                    <br><br>
-
-                    <button type="submit">
-                        Submit
-                    </button>
-                </form>
-            </body>
-        </html>
-    `;
-
-    res.writeHead(200, { 'Content-Type': 'text/html' });
+async function showForm(res, filePath) {
+    const html = fs.createReadStream(filePath, 'utf-8');
+    const stat = await fs.promises.stat(filePath);
+    res.writeHead(200, {
+        'Content-Type': GetContentType(filePath),
+        'Content-Length': stat.size, // ← browser dùng cái này cho progress bar
+        'Last-Modified': stat.mtime.toUTCString(), // ← browser dùng để cache
+    });
+    html.pipe(res);
     res.end(html);
 }
 
@@ -306,16 +281,30 @@ function handleSubmit(req, res) {
     });
 }
 
-function GetContentType () {
-    
+function GetContentType (filePath) {
+    const extName = path.extname(filePath).toLowerCase();
+    const map = {
+        '.html': 'text/html; charset=utf-8',
+        '.css':  'text/css',
+        '.js':   'application/javascript',
+        '.json': 'application/json',
+        '.png':  'image/png',
+        '.jpg':  'image/jpeg',
+        '.mp4':  'video/mp4',
+        '.pdf':  'application/pdf',
+    };
+
+    return map[extName] || 'application/octet-stream'; // fallback → trigger download
 }
 
 const server = http.createServer((req, res) => {
+    if (!checkStaticFileExist(req, res)) return;
+
     //Route
     if (req.url === '/') {   
         switch (req.method) {
             case 'GET':
-                showForm(res);
+                showForm(res, filePath);
                 break;
             case 'POST':
                 handleUpload(req, res);
@@ -331,6 +320,57 @@ const server = http.createServer((req, res) => {
         res.end('Not Found');
     }    
 });
+
+function checkStaticFileExist (req, res) {
+    try {
+        const url = new URL(req.url, `http://${req.headers.host}`);
+        const pathName = decodeURIComponent(url.pathname);
+
+        // 1. Tạo đường dẫn tuyệt đối, chống path traversal
+        filePath = path.normalize(
+            path.join(
+                publicDir, 
+                url.pathname === "/" 
+                    ? "index.html"
+                    : ""
+            )
+        );
+
+        if (!filePath.startsWith(publicDir)) {
+            res.statusCode = 403;
+            res.end('Forbidden');
+            return false;
+        }
+
+        // ─── Bước 1: stat() — kiểm tra file TRƯỚC khi làm bất cứ gì ───
+        fs.stat(filePath, (err, stats) => {
+            if (err) {
+                switch (err.code) {
+                    case 'ENOENT':
+                        //File ko tồn tại
+                        res.statusCode = 404;
+                        res.end('File không tồn tại');
+                        return false;
+                    case 'EACCES':
+                        res.statusCode = 403;
+                        res.end('Không có quyền truy cập file');
+                        return false;
+                    default:
+                        res.statusCode = 500;
+                        res.end('Lỗi không xác định');
+                        return false;
+                }                
+            }
+        });
+
+        return true;
+    } 
+    catch (err) {
+        console.error(`Error: ${err.message}`);
+        return false;
+    }   
+    
+}
 
 server.listen(3000, () => {
     console.log('Server chạy tại http://localhost:3000');
