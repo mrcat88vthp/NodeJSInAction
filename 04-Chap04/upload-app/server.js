@@ -306,6 +306,10 @@ function handleSubmit(req, res) {
     });
 }
 
+function GetContentType () {
+    
+}
+
 const server = http.createServer((req, res) => {
     //Route
     if (req.url === '/') {   
