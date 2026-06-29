@@ -17,7 +17,10 @@
     // and npm install -D @types/node
 
     "rootDir": "./src",
-    "outDir": "./dist",
+    "outDir": "./dist",    
+    "paths": {
+      "@/*": ["./src/*"]
+    },
 
     // Other Outputs
     "sourceMap": true,
