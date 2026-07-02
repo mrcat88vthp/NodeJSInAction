@@ -19,6 +19,12 @@ function unlinkFile(writeStream: fs.WriteStream, filePath: string, reject: (reas
 }
 
 export class LocalFileStorage implements IFileStorage {
+    constructor() {
+        // Tạo thư mục ngay khi khởi tạo
+        fs.mkdirSync(Paths.uploadPath, { recursive: true });
+        console.log(`[LocalFileStorage] Upload dir: ${Paths.uploadPath}`);
+    }
+
     async saveFile(
         fileName: string, 
         stream: NodeJS.ReadableStream
