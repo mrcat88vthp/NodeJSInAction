@@ -32,9 +32,7 @@ export class LocalFileStorage implements IFileStorage {
         const filePath = path.join(Paths.rootPath, fileName);       
 
         await new Promise<void>((resolve, reject) => {
-            const writeStream: fs.WriteStream = fs.createWriteStream(filePath);
-
-            stream.pipe(writeStream);
+            const writeStream: fs.WriteStream = fs.createWriteStream(filePath);            
 
             writeStream.on('finish', resolve);
 
