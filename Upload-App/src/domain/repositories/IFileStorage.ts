@@ -1,6 +1,8 @@
+import type { MetaDataFile } from '@/infrastructure/repositories/storage/DTOs/MetaDataFile.js';
+
 export interface IFileStorage {
     saveFile (
-        fileName: string,
+        file: MetaDataFile,
         stream: NodeJS.ReadableStream,
     ): Promise<string>;
 }

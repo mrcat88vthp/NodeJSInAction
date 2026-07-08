@@ -43,19 +43,14 @@ export class LocalFileStorage implements IFileStorage {
     }
 
     async saveFile(
-        fileName: string, 
+        file: MetaDataFile, 
         stream: NodeJS.ReadableStream
     ): Promise<string> {
-        const filePath = path.join(Paths.uploadPath, fileName);       
+        const filePath = path.join(Paths.uploadPath, file.fileName);       
 
         await new Promise<void>((resolve, reject) => {
-            const writeStream: fs.WriteStream = fs.createWriteStream(filePath);            
-
-            writeStream.on('finish', async () => {
-                await this.saveUpload([{ fileName, filePath }]);
-                resolve();
-            });
-
+            const writeStream: fs.WriteStream = fs.createWriteStream(filePath);
+            
             let isUnlinked = false;
             const handlerError = (err: Error) => {
                 if (isUnlinked) return;
@@ -63,6 +58,29 @@ export class LocalFileStorage implements IFileStorage {
                 isUnlinked = true;                
                 unlinkFile(writeStream, filePath, reject, err);
             }
+
+            writeStream.on('finish', async () => {
+                try {
+                    await this.saveLogUpload([file]);
+                    resolve();
+                }
+                catch (err) {
+                    try {
+                        await fs.promises.unlink(filePath);
+                    }
+                    catch (unlinkErr) {
+                        
+                    }
+                    fs.unlink(filePath, (unlinkErr) => {
+                        if (unlinkErr) {
+                            console.error(`Failed to delete file ${filePath}:`, unlinkErr);
+                        }        
+                    });                    
+
+                    reject(err);
+                }
+                
+            });           
 
             writeStream.on('error', handlerError);
 
@@ -90,8 +108,8 @@ export class LocalFileStorage implements IFileStorage {
         }
     }
 
-    private async saveUpload(entries: MetaDataFile[]): Promise<void> {
-        this.writeQueue = this.writeQueue.then(async () => {
+    private saveLogUpload(entries: MetaDataFile[]): Promise<void> {
+        const task = this.writeQueue.then(async () => {
             const metaFileUploaded = await this.readMetadataFile();
             metaFileUploaded.unshift(...entries);
 
@@ -102,7 +120,11 @@ export class LocalFileStorage implements IFileStorage {
             );
         });
 
-        return this.writeQueue;
+        this.writeQueue = task.catch((err) => {
+            console.error(`[LocalFileStorage] Failed to save metadata:`, err);
+        });
+
+        return task;
         
     }
 }

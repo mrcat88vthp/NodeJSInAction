@@ -48,7 +48,12 @@ export class UploadFilesService {
             );
 
             // 5. Lưu file — UseCase không biết lưu đâu (local / S3 / GCS)
-            const filePath = await this.fileStorage.saveFile(safeName, trackedStream);
+            const filePath = await this.fileStorage.saveFile({
+                fileName: safeName,
+                size: totalSize,
+                uploadDate: new Date(),
+                mimeType
+            }, trackedStream);
 
             // 6. Thông báo hoàn tất
             this.publish({
