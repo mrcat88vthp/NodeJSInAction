@@ -6,4 +6,6 @@ export const Paths = {
     uploadPath: path.join(process.cwd(), 'uploads'),
 
     publicPath: path.join(process.cwd(), 'public'),
+
+    metadataFilePath: path.join(process.cwd(), 'uploads', 'metadata.json')
 }
