@@ -68,14 +68,14 @@ export class LocalFileStorage implements IFileStorage {
                     try {
                         await fs.promises.unlink(filePath);
                     }
-                    catch (unlinkErr) {
-                        
+                    catch (unlinkErr: any) {
+                        if(unlinkErr.code === 'ENOENT') {
+                            console.warn(`File ${filePath} already removed (not found), skip cleanup.`);
+                        }
+                        else {
+                            console.error(`Failed to delete file ${filePath}:`, unlinkErr);                                                
+                        }
                     }
-                    fs.unlink(filePath, (unlinkErr) => {
-                        if (unlinkErr) {
-                            console.error(`Failed to delete file ${filePath}:`, unlinkErr);
-                        }        
-                    });                    
 
                     reject(err);
                 }

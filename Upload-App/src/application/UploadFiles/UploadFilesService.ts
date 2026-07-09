@@ -6,6 +6,7 @@ import type { UploadFileInputDTO, UploadFileOutputDTO } from '@/application/Uplo
 import { UploadProgressEvent, type UploadProgressPayload } from '@/domain/events/UploadProgressEvent.js';
 import path from 'path';
 import { PassThrough } from 'stream';
+import { randomUUID } from 'crypto';
 
 export class UploadFilesService {
     constructor(
@@ -132,6 +133,10 @@ export class UploadFilesService {
             passThrough.destroy(error);
         });
 
+        source.on('error', (error: Error) => {
+            passThrough.destroy(error);
+        });
+
         source.pipe(passThrough);
 
         return passThrough;
@@ -172,12 +177,9 @@ export class UploadFilesService {
     }
 
     private generateSafeFileName(fileName: string): string {
-        const ext = path.extname(fileName).toLowerCase();
-        const baseName = path.basename(fileName, ext)
-            .replace(/[^a-zA-Z0-9_\-]/g, '_')
-            .slice(0, 60);
+        const ext = path.extname(fileName).toLowerCase();        
 
-        return `${Date.now()}-${baseName}${ext}`;
+        return `${randomUUID()}${ext}`;
     }
 }
 
