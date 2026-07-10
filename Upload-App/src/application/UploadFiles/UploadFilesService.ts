@@ -1,12 +1,17 @@
+//User
 import type { IFileStorage } from '@/domain/repositories/IFileStorage.js';
 import type { IEventBus } from '@/domain/events/IEventBus.js';
 import { MAX_FILE_SIZE, ALLOWED_FILE_TYPES } from '@/shared/constants/file.js';
 import { type FileException, FileErrorCodes } from '@/application/UploadFiles/DTOs/FileException.js';
 import type { UploadFileInputDTO, UploadFileOutputDTO } from '@/application/UploadFiles/DTOs/FileTypes.js';
 import { UploadProgressEvent, type UploadProgressPayload } from '@/domain/events/UploadProgressEvent.js';
+
+//Node.js built-in modules
 import path from 'path';
-import { PassThrough } from 'stream';
+import { Readable, PassThrough } from 'stream';
 import { randomUUID } from 'crypto';
+import { fileTypeFromBuffer } from 'file-type';
+
 
 export class UploadFilesService {
     constructor(
@@ -20,7 +25,7 @@ export class UploadFilesService {
         const {stream, fileName, mimeType, totalSize, socketId} = input;
 
         //1. validate bussiness rules
-        this.validateFile(fileName, totalSize);
+        this.validateFileSize(totalSize);
 
         //2. Tạo tên file safe
         const safeName = this.generateSafeFileName(fileName);
@@ -36,7 +41,10 @@ export class UploadFilesService {
         });
 
         try {
-            // 4. Bọc stream với progress tracking
+            //4. validate nội dung thực trước khi track/lưu
+            const validatedStream = await this.validateFileTypeByContent_ver_1(stream);
+
+            // 5. Bọc stream với progress tracking
             //    PassThrough đứng giữa: source → PassThrough → writeStream
             //    Mỗi chunk qua PassThrough → publish event
             const trackedStream = this.createTrackedStream(
@@ -48,7 +56,7 @@ export class UploadFilesService {
                 }
             );
 
-            // 5. Lưu file — UseCase không biết lưu đâu (local / S3 / GCS)
+            // 6. Lưu file — UseCase không biết lưu đâu (local / S3 / GCS)
             const filePath = await this.fileStorage.saveFile({
                 fileName: safeName,
                 size: totalSize,
@@ -56,7 +64,7 @@ export class UploadFilesService {
                 mimeType
             }, trackedStream);
 
-            // 6. Thông báo hoàn tất
+            // 7. Thông báo hoàn tất
             this.publish({
                 socketId,
                 fileName: safeName,
@@ -66,8 +74,10 @@ export class UploadFilesService {
                 status: 'completed'
             });
 
+            //8. Trả về thông tin file đã lưu
             const result: UploadFileOutputDTO = {
-                fileName, 
+                originalFileName: fileName, 
+                saveFileName: safeName,
                 fileSize: totalSize, 
                 filePath: filePath
             };
@@ -75,20 +85,62 @@ export class UploadFilesService {
             return result;
         }
         catch (error) {
-            this.publish({
-                socketId,
-                fileName: safeName,
-                uploaded: 0,
-                total: totalSize,
-                percent: 0,
-                status: 'failed'
-            });
-
             throw error;
         }
     }
 
     // ── Private helpers ──────────────────────────────────────────
+    /*
+        * Validdate file extension theo byte đầu    
+    */    
+    private async validateFileTypeByContent_ver_1(
+        source: Readable
+    ): Promise<PassThrough> {
+        return new Promise((resolve, reject) => {
+            const passThrough = new PassThrough();
+
+            let fileTypeBuffer: Buffer[] = [];
+            let fileTypeDetected = false;
+
+            source.on('data', async (chunk: Buffer) => {
+                if (!fileTypeDetected) {
+                    fileTypeBuffer.push(chunk);
+                    const bufferCombined: Buffer<ArrayBuffer> = Buffer.concat(fileTypeBuffer);
+
+                    if (bufferCombined.length < 262 && !source.readableEnded) return; // Wait for more data
+
+                    fileTypeDetected = true;
+                    source.pause(); // Pause the source stream while we check the file type
+
+                    const detectedExt = await fileTypeFromBuffer(bufferCombined);
+                    if (!detectedExt || !ALLOWED_FILE_TYPES.hasOwnProperty(detectedExt.ext)) {  
+                        source.destroy();
+                        const error: FileException = {
+                            errorCode: FileErrorCodes.INVALID_FILE_TYPE,
+                            errorMessage: `File type ${detectedExt} is not allowed.`
+                        };
+
+                        reject(new Error(JSON.stringify(error, null, 2)));
+                        return;
+                    }
+
+                    // Hợp lệ → đẩy phần đã buffer ra trước, rồi resume stream tiếp tục pipe bình thường
+                    passThrough.write(bufferCombined);
+                    source.pipe(passThrough, { end: true });
+                    source.resume(); // Resume the source stream
+                    resolve(passThrough);
+                }
+                else {
+                    passThrough.write(chunk);
+                }
+            });
+
+            source.on('error', (err) => {
+                source.destroy(err);
+                reject(err);
+            });
+        });
+    }
 
     /*
         * Tạo PassThrough stream để đo bytes đang chảy qua.
@@ -106,7 +158,7 @@ export class UploadFilesService {
     ): PassThrough {
         const { socketId, fileName, totalSize } = options;
         let uploadedBytes = 0;    
-        let lastPercent = -1;    
+        let lastPercent = 0;  
 
         const passThrough = new PassThrough();
 
@@ -117,7 +169,8 @@ export class UploadFilesService {
                 : 0;
 
             if (percent !== lastPercent) {
-                lastPercent = percent;            
+                lastPercent = percent; 
+
                 this.publish({
                     socketId,
                     fileName,
@@ -130,10 +183,36 @@ export class UploadFilesService {
         });
 
         passThrough.on('error', (error: Error) => {
+            let errorPercent = totalSize > 0 
+                ? Math.min(99, Math.round((uploadedBytes / totalSize) * 100)) 
+                : 0;
+
+            this.publish({
+                socketId,
+                fileName: fileName,
+                uploaded: uploadedBytes,
+                total: totalSize,
+                percent: errorPercent,
+                status: 'failed'
+            });
+
             passThrough.destroy(error);
         });
 
         source.on('error', (error: Error) => {
+            let errorPercent = totalSize > 0 
+                ? Math.min(99, Math.round((uploadedBytes / totalSize) * 100)) 
+                : 0;
+
+            this.publish({
+                socketId,
+                fileName: fileName,
+                uploaded: uploadedBytes,
+                total: totalSize,
+                percent: errorPercent,
+                status: 'failed'
+            });
+
             passThrough.destroy(error);
         });
 
@@ -144,11 +223,6 @@ export class UploadFilesService {
 
     private publish(input: UploadProgressPayload): void {
         this.eventBus.publish(new UploadProgressEvent(input));
-    }
-
-    private validateFile(fileName: string, size: number) {
-        this.validateFileSize(size);
-        this.validateFileType(fileName);
     }
 
     private validateFileSize(size: number): void {
@@ -163,23 +237,15 @@ export class UploadFilesService {
         
     }
 
-    private validateFileType(fileName: string): void {
-        const ext = path.extname(fileName).toLowerCase();
+    
 
-        if (!ALLOWED_FILE_TYPES.hasOwnProperty(ext)) {
-            const error: FileException = {
-                errorCode: FileErrorCodes.INVALID_FILE_TYPE,
-                errorMessage: `File type ${ext} is not allowed.`
-            };
-            
-            throw new Error(JSON.stringify(error, null, 2));
-        }
-    }
-
+    /*
+        * Tạo tên file safe bằng cách sử dụng UUID + extension
+    */       
     private generateSafeFileName(fileName: string): string {
         const ext = path.extname(fileName).toLowerCase();        
 
         return `${randomUUID()}${ext}`;
-    }
+    }    
 }
 

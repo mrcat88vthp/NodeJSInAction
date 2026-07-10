@@ -1,5 +1,7 @@
+import { Readable } from "stream";
+
 export type UploadFileInputDTO = {
-    stream: NodeJS.ReadableStream,
+    stream: Readable,
     fileName: string,
     mimeType: string,
     totalSize: number,
@@ -7,7 +9,8 @@ export type UploadFileInputDTO = {
 }
 
 export type UploadFileOutputDTO = {
-    fileName: string,
+    originalFileName: string,
+    saveFileName: string,
     fileSize: number,
     filePath: string
 }
