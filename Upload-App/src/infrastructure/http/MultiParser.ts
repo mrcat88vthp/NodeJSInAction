@@ -6,16 +6,15 @@ import type { IMultiPartParser } from '@/application/ports/IMultiPartParser.js';
 import type { MultiPartParserInputDTO } from '@/application/ports/DTOs/MultiPartParserDTO.js';
 
 export class MultiParser implements IMultiPartParser {
-    constructor() {
-        
-    }
+    constructor() { }
 
     async parse (
         req: NodeJS.ReadableStream,
         headers: Record<string, string>,
         onFile: (input: MultiPartParserInputDTO) => Promise<void>
     ): Promise<void> {
-
+        return new Promise((resolve, reject) => {
+        });
     }
 
     
