@@ -14,3 +14,5 @@ export type UploadFileOutputDTO = {
     fileSize: number,
     filePath: string
 }
+
+export type UploadStatusDTO = 'collecting' | 'validating' | 'forwarding';

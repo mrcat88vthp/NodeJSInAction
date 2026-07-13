@@ -1,9 +1,9 @@
-//User
+//User built modules
 import type { IFileStorage } from '@/domain/repositories/IFileStorage.js';
 import type { IEventBus } from '@/domain/events/IEventBus.js';
-import { MAX_FILE_SIZE, ALLOWED_FILE_TYPES } from '@/shared/constants/file.js';
+import { MAX_FILE_SIZE, ALLOWED_FILE_TYPES, MIN_BYTES_TO_DETECT_FILE_TYPE } from '@/shared/constants/file.js';
 import { type FileException, FileErrorCodes } from '@/application/UploadFiles/DTOs/FileException.js';
-import type { UploadFileInputDTO, UploadFileOutputDTO } from '@/application/UploadFiles/DTOs/FileTypes.js';
+import type { UploadFileInputDTO, UploadFileOutputDTO, UploadStatusDTO } from '@/application/UploadFiles/DTOs/FileTypes.js';
 import { UploadProgressEvent, type UploadProgressPayload } from '@/domain/events/UploadProgressEvent.js';
 
 //Node.js built-in modules
@@ -107,7 +107,7 @@ export class UploadFilesService {
                     fileTypeBuffer.push(chunk);
                     const bufferCombined: Buffer<ArrayBuffer> = Buffer.concat(fileTypeBuffer);
 
-                    if (bufferCombined.length < 262 && !source.readableEnded) return; // Wait for more data
+                    if (bufferCombined.length < MIN_BYTES_TO_DETECT_FILE_TYPE && !source.readableEnded) return; // Wait for more data
 
                     fileTypeDetected = true;
                     source.pause(); // Pause the source stream while we check the file type
@@ -139,6 +139,22 @@ export class UploadFilesService {
                 source.destroy(err);
                 reject(err);
             });
+        });
+    }
+
+    private async validateFileTypeByContent_ver_2(
+        source: Readable
+    ): Promise<PassThrough> {
+        const output = new PassThrough();
+
+        return new Promise<PassThrough>((resolve, reject) => {
+            let state: UploadStatusDTO = 'collecting';
+            let fileTypeBuffer: Buffer[] = [];
+            let filePendingBuffer: Buffer[] = [];
+            let fileTypeDetected = false;
+            let fileStreamEnded = false;
+
+            
         });
     }
 
