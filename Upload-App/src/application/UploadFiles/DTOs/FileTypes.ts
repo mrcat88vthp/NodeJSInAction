@@ -15,4 +15,4 @@ export type UploadFileOutputDTO = {
     filePath: string
 }
 
-export type UploadStatusDTO = 'collecting' | 'validating' | 'forwarding';
+export type UploadStatusDTO = 'collecting' | 'validating' | 'endValidating';

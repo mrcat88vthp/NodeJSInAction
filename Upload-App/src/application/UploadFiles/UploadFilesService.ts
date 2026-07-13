@@ -42,7 +42,7 @@ export class UploadFilesService {
 
         try {
             //4. validate nội dung thực trước khi track/lưu
-            const validatedStream = await this.validateFileTypeByContent_ver_1(stream);
+            const validatedStream = await this.validateFileTypeByContent_ver_2(stream);
 
             // 5. Bọc stream với progress tracking
             //    PassThrough đứng giữa: source → PassThrough → writeStream
@@ -152,9 +152,105 @@ export class UploadFilesService {
             let fileTypeBuffer: Buffer[] = [];
             let filePendingBuffer: Buffer[] = [];
             let fileTypeDetected = false;
-            let fileStreamEnded = false;
+            let fileStreamEnded = false; // ← MỚI: đánh dấu 'end' đã bắn ra, dù đang ở state nào
 
-            
+            const setPromiseState = (err?: Error) => {
+                if (fileTypeDetected) return;
+                fileTypeDetected = true;
+                err ? reject(err) : resolve(output);
+            };
+
+            const fail = (error: Error) => {
+                output.destroy(error);
+                if(!source.destroyed) source.destroy(error);
+                setPromiseState(error);
+            };
+
+            const validateFileType = async (combined: Buffer) => {
+                state = 'validating';
+                // Chỉ pause nếu stream chưa tự kết thúc — pause một stream đã 'end' là vô nghĩa
+                if(!fileStreamEnded) source.pause();
+
+                let detectedExt;
+                try {
+                    detectedExt = await fileTypeFromBuffer(combined);
+                }
+                catch (error) {
+                    return;
+                }
+
+                if (!detectedExt || ALLOWED_FILE_TYPES.hasOwnProperty(detectedExt.ext) === false) {
+                    const error: FileException = {
+                        errorCode: FileErrorCodes.INVALID_FILE_TYPE,
+                        errorMessage: `File type ${detectedExt} is not allowed.`
+                    };
+                    fail(new Error(JSON.stringify(error, null, 2)));
+                    return;
+                }
+
+                output.write(combined);
+                for (const chunk of filePendingBuffer) {
+                    output.write(chunk);
+                }
+
+                filePendingBuffer = [];
+                state = 'endValidating';
+
+                // Quyết định resume hay end DỰA TRÊN TRẠNG THÁI THỰC TẾ TẠI THỜI ĐIỂM NÀY,
+                // không phải dựa trên tham số cố định lúc gọi validate() ban đầu.
+                if(fileStreamEnded) 
+                    output.end();
+                else
+                    source.resume();
+
+                setPromiseState();
+            };
+
+            const handleData = (chunk: Buffer) => {
+                if (state === 'collecting') {
+                    fileTypeBuffer.push(chunk);
+                    const bufferCombined: Buffer = Buffer.concat(fileTypeBuffer);
+
+                    if (bufferCombined.length >= MIN_BYTES_TO_DETECT_FILE_TYPE) {
+                        validateFileType(bufferCombined);
+                    }
+
+                    return;
+                }
+
+                if (state === 'validating') {
+                    filePendingBuffer.push(chunk);
+                    return;
+                }
+
+                output.write(chunk);
+            };
+
+            const handleEnd = () => {
+                fileStreamEnded = true;// luôn đánh dấu, bất kể state hiện tại là gì
+
+                if (state === 'collecting') {
+                    // File nhỏ hơn MIN_BYTES_FOR_DETECTION, hoặc kết thúc đúng lúc gần đủ ngưỡng
+                    const bufferCombined: Buffer = Buffer.concat(fileTypeBuffer);
+                    validateFileType(bufferCombined);
+                    return;
+                }
+
+                if (state === 'endValidating') {
+                    output.end();
+                    return;
+                }
+
+                // state === 'validating': không làm gì ở đây cả.
+                // validate() đang await, khi xong nó sẽ tự đọc streamEnded=true
+                // và gọi output.end() đúng thay vì resume(). Đây chính là fix của edge case.
+            };
+
+            const handleError = (error: Error) => fail(error);
+
+            source.on('data', handleData);
+            source.on('end', handleEnd);
+            source.on('error', handleError);
         });
     }
 
