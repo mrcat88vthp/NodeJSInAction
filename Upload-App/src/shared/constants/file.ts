@@ -1,6 +1,8 @@
 export const MAX_FILE_SIZE:number = 10 * 1024 * 1024; // 10 MB
 
-export const MAX_COUNT_FILES:number = 5; // 5 files
+export const MAX_COUNT_FILES:number = 1; // 1 files
+
+export const MAX_COUNT_FIELDS:number = 1; // 10 fields
 
 export const MIN_BYTES_TO_DETECT_FILE_TYPE:number = 262; // Minimum bytes required to detect file type
 

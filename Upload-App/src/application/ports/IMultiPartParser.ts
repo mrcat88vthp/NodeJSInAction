@@ -1,9 +1,9 @@
-import type { MultiPartParserInputDTO } from "@/application/ports/DTOs/MultiPartParserDTO.ts";
+import type { MultiPartParserHandlerDTO } from "@/application/ports/DTOs/MultiPartParserHandlerDTO.js";
+import { Readable } from 'stream';
 
 export interface IMultiPartParser {
     parse (
-        req: NodeJS.ReadableStream,
-        headers: Record<string, string>,
-        onFile: (input: MultiPartParserInputDTO) => Promise<void>
+        req: Readable,        
+        handlers: MultiPartParserHandlerDTO
     ): Promise<void>;
 }
