@@ -1,20 +1,17 @@
 import busboy from 'busboy';
-import fs from 'fs';
 import { IncomingMessage  } from 'http';
 
-import { Paths } from '@/shared/constants/paths.js';
 import { MAX_COUNT_FILES, MAX_FILE_SIZE, MAX_COUNT_FIELDS } from '@/shared/constants/file.js';
-import type { IMultiPartParser } from '@/application/ports/IMultiPartParser.js';
-import type { MultiPartParserFieldDTO, MultiPartParserFileDTO } from './DTOs/MultiParserType.js';
+import type { IMultiPartParser } from '@/application/interfaces/ports/IMultiPartParser.js';
+import type { MultiPartParserFieldDTO, MultiPartParserHandlersDTO, MultiPartParserFileDTO } from '@/application/interfaces/ports/DTOs/MultiParserType.js';
 
 export class MultiParser implements IMultiPartParser {
     constructor() { }
 
     async parse (
-        req: IncomingMessage
+        req: IncomingMessage,
+        handlers: MultiPartParserHandlersDTO
     ): Promise<void> {
-        const fields: MultiPartParserFieldDTO = {};
-        const files: MultiPartParserFileDTO[] = [];
 
         return new Promise((resolve, reject) => {
             const bb = busboy({
@@ -28,23 +25,32 @@ export class MultiParser implements IMultiPartParser {
 
             // ── xử lý text field ────────────────────────────────────────────────────
             bb.on('field', (name, value) => {
-                fields[name] = value;
-                console.log(`[field] ${name}: ${value}`);
+                handlers.onField({name, value} as MultiPartParserFieldDTO);
             });
 
             // ── xử lý file upload ───────────────────────────────────────────────────
             bb.on('file', (fieldName, file, info) => {
-                const { filename, mimeType } = info;
-                
-                console.log(`[file] nhận: ${filename} (${mimeType})`);
+                handlers.onFile({
+                    stream: file,
+                    fileName: info.filename,
+                    fieldName: fieldName,
+                    mimeType: info.mimeType            
+                } as MultiPartParserFileDTO);
             });
 
-            bb.on('finish', () => {             
+            bb.on('finish', () => {    
+                handlers.onFinish(() => {
+                    resolve();
+                });
             });
 
-            bb.on('error', (err) => {
-                reject(err);
+            bb.on('error', (err: Error) => {                
+                handlers.onError((err: Error) => {
+                    reject(err);
+                });
             });
+
+            req.pipe(bb);
         });
     }
 

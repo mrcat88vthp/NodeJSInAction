@@ -21,23 +21,29 @@ function unlinkFile(writeStream: fs.WriteStream, filePath: string, reject: (reas
 
 export class LocalFileStorage implements IFileStorage {
     private writeQueue: Promise<void> = Promise.resolve();
+    private static _uploadPath: string = '';
+    private static _metadataFilePath: string = '';
 
-    private constructor() {}    
+    private constructor() {        
+    }    
 
-    static async create(): Promise<LocalFileStorage> {
+    static async create(uploadPath: string, metadataFilePath: string): Promise<LocalFileStorage> {
         // Tạo thư mục ngay khi khởi tạo
-        await fs.promises.mkdir(Paths.uploadPath, { recursive: true });        
-        console.log(`[LocalFileStorage] Upload dir: ${Paths.uploadPath}`);
+        this._uploadPath = uploadPath;
+        this._metadataFilePath = metadataFilePath;
+
+        await fs.promises.mkdir(uploadPath, { recursive: true });        
+        console.log(`[LocalFileStorage] Upload dir: ${this._uploadPath}`);
 
         // Tạo file metadata ngay khi khởi tạo
         try {
-            await fs.promises.access(Paths.metadataFilePath, fs.constants.F_OK);
+            await fs.promises.access(this._metadataFilePath, fs.constants.F_OK);
         }
         catch {
-            await fs.promises.writeFile(Paths.metadataFilePath, '[]', 'utf-8');
+            await fs.promises.writeFile(this._metadataFilePath, '[]', 'utf-8');
         }        
 
-        console.log(`[LocalFileStorage] Metadata file: ${Paths.metadataFilePath}`);
+        console.log(`[LocalFileStorage] Metadata file: ${this._metadataFilePath}`);
 
         return new LocalFileStorage();
     }
@@ -46,7 +52,7 @@ export class LocalFileStorage implements IFileStorage {
         file: MetaDataFile, 
         stream: NodeJS.ReadableStream
     ): Promise<string> {
-        const filePath = path.join(Paths.uploadPath, file.fileName);       
+        const filePath = path.join(this._uploadPath, file.fileName);       
 
         await new Promise<void>((resolve, reject) => {
             const writeStream: fs.WriteStream = fs.createWriteStream(filePath);
@@ -99,22 +105,22 @@ export class LocalFileStorage implements IFileStorage {
         return filePath;
     }
 
-    private async readMetadataFile(): Promise<MetaDataFile[]> {
+    private async readMetadataFile(metadataFilePath: string): Promise<MetaDataFile[]> {
         try {
-            return JSON.parse(await fs.promises.readFile(Paths.metadataFilePath, 'utf-8'));
+            return JSON.parse(await fs.promises.readFile(metadataFilePath, 'utf-8'));
         }
         catch {
             return [];
         }
     }
 
-    private saveLogUpload(entries: MetaDataFile[]): Promise<void> {
+    private saveLogUpload(metadataFilePath: string, entries: MetaDataFile[]): Promise<void> {
         const task = this.writeQueue.then(async () => {
-            const metaFileUploaded = await this.readMetadataFile();
+            const metaFileUploaded = await this.readMetadataFile(metadataFilePath);
             metaFileUploaded.unshift(...entries);
 
             await fs.promises.writeFile(
-                Paths.metadataFilePath, 
+                metadataFilePath, 
                 JSON.stringify(metaFileUploaded, null, 2), 
                 'utf-8'
             );
