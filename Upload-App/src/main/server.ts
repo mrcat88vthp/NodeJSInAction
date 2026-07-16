@@ -27,3 +27,4 @@ const io = new SocketIOServer(httpServer, {
 
 const fileStorage = await LocalFileStorage.create(Paths.uploadPath, Paths.metadataFilePath);
 const eventBus = new InMemoryEventBus();
+const socketIOGateway = new SocketIOGateway(io);
