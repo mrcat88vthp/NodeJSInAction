@@ -1,1 +1,0 @@
-{"version":3,"file":"UploadProgressEvent.js","sourceRoot":"","sources":["../../../src/domain/events/UploadProgressEvent.ts"],"names":[],"mappings":"AAAA,OAAO,EAAqB,MAAM,mBAAmB,CAAC;AAGtD,MAAM,OAAO,mBAAmB;IAIP;IAHZ,SAAS,GAAG,iBAA0B,CAAC;IACvC,UAAU,GAAG,IAAI,IAAI,EAAE,CAAC;IAEjC,YAAqB,OAA8B;QAA9B,YAAO,GAAP,OAAO,CAAuB;IAEnD,CAAC;CACJ"}

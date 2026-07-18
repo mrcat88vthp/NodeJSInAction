@@ -1,1 +1,0 @@
-{"version":3,"file":"IMultiPartParser.d.ts","sourceRoot":"","sources":["../../../../src/application/interfaces/ports/IMultiPartParser.ts"],"names":[],"mappings":"AAAA,OAAO,EAAE,QAAQ,EAAE,MAAM,QAAQ,CAAC;AAClC,OAAO,KAAK,EAAE,0BAA0B,EAAE,MAAM,2BAA2B,CAAC;AAE5E,MAAM,WAAW,gBAAgB;IAC7B,KAAK,CACD,GAAG,EAAE,QAAQ,EACb,QAAQ,EAAE,0BAA0B,GACrC,OAAO,CAAC,IAAI,CAAC,CAAC;CACpB"}
