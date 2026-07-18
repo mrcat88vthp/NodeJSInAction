@@ -38,16 +38,12 @@ export class MultiParser implements IMultiPartParser {
                 } as MultiPartParserFileDTO);
             });
 
-            bb.on('finish', () => {    
-                handlers.onFinish(() => {
-                    resolve();
-                });
+            bb.on('finish', () => {
+                resolve();
             });
 
-            bb.on('error', (err: Error) => {                
-                handlers.onError((err: Error) => {
-                    reject(err);
-                });
+            bb.on('error', (err: Error) => { 
+                reject(err);
             });
 
             req.pipe(bb);

@@ -2,7 +2,6 @@ import fs from 'fs';
 import path from 'path';
 
 import type { IFileStorage } from '@/domain/repositories/IFileStorage.js';
-import { Paths } from '@/shared/constants/paths.js';
 import type { MetaDataFile } from '@/infrastructure/repositories/storage/DTOs/MetaDataFile.js';
 
 function unlinkFile(writeStream: fs.WriteStream, filePath: string, reject: (reason?: any) => void, err: Error) {
@@ -52,7 +51,7 @@ export class LocalFileStorage implements IFileStorage {
         file: MetaDataFile, 
         stream: NodeJS.ReadableStream
     ): Promise<string> {
-        const filePath = path.join(this._uploadPath, file.fileName);       
+        const filePath = path.join(LocalFileStorage._uploadPath, file.fileName);       
 
         await new Promise<void>((resolve, reject) => {
             const writeStream: fs.WriteStream = fs.createWriteStream(filePath);
@@ -114,13 +113,13 @@ export class LocalFileStorage implements IFileStorage {
         }
     }
 
-    private saveLogUpload(metadataFilePath: string, entries: MetaDataFile[]): Promise<void> {
+    private saveLogUpload(entries: MetaDataFile[]): Promise<void> {
         const task = this.writeQueue.then(async () => {
-            const metaFileUploaded = await this.readMetadataFile(metadataFilePath);
+            const metaFileUploaded: MetaDataFile[] = await this.readMetadataFile(LocalFileStorage._metadataFilePath);
             metaFileUploaded.unshift(...entries);
 
             await fs.promises.writeFile(
-                metadataFilePath, 
+                LocalFileStorage._metadataFilePath, 
                 JSON.stringify(metaFileUploaded, null, 2), 
                 'utf-8'
             );

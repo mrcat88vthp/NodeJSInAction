@@ -1,0 +1,1 @@
+{"version":3,"file":"IFileStorage.d.ts","sourceRoot":"","sources":["../../../src/domain/repositories/IFileStorage.ts"],"names":[],"mappings":"AAAA,OAAO,KAAK,EAAE,YAAY,EAAE,MAAM,4DAA4D,CAAC;AAE/F,MAAM,WAAW,YAAY;IACzB,QAAQ,CACJ,IAAI,EAAE,YAAY,EAClB,MAAM,EAAE,MAAM,CAAC,cAAc,GAC9B,OAAO,CAAC,MAAM,CAAC,CAAC;CACtB"}

@@ -4,9 +4,10 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "dev": "ts-node-dev --respawn src/app.ts",
-    "build": "tsc",
-    "start": "node dist/app.js"
+    "prebuild": "rimraf dist",
+    "dev": "ts-node-dev --respawn src/server.ts",
+    "build": "tsc && tsc-alias",
+    "start": "node dist/server.js"
   },
   "keywords": [],
   "author": "",
@@ -22,12 +23,15 @@
     "prettier": "^3.8.4",
     "ts-node": "^10.9.2",
     "ts-node-dev": "^2.0.0",
+    "tsc-alias": "^1.9.1",
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.61.1"
   },
   "dependencies": {
     "busboy": "^1.6.0",
     "express": "^5.2.1",
-    "file-type": "^22.0.1"
+    "file-type": "^22.0.1",
+    "socket.io": "^4.8.3",
+    "tsconfig-paths": "^4.2.0"
   }
 }

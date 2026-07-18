@@ -1,0 +1,1 @@
+{"version":3,"file":"ISocketGateway.d.ts","sourceRoot":"","sources":["../../../src/domain/gateway/ISocketGateway.ts"],"names":[],"mappings":"AAAA,MAAM,WAAW,cAAc;IAC3B,YAAY,CACR,QAAQ,EAAE,MAAM,EAChB,SAAS,EAAE,MAAM,EACjB,IAAI,EAAE,OAAO,GACd,IAAI,GAAG,OAAO,CAAC,IAAI,CAAC,CAAC;CAC3B"}

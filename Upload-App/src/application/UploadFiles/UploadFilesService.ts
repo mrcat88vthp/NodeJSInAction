@@ -4,7 +4,8 @@ import type { IEventBus } from '@/domain/events/IEventBus.js';
 import { MAX_FILE_SIZE, ALLOWED_FILE_TYPES, MIN_BYTES_TO_DETECT_FILE_TYPE } from '@/shared/constants/file.js';
 import { type FileException, FileErrorCodes } from '@/application/UploadFiles/DTOs/FileException.js';
 import type { UploadFileInputDTO, UploadFileOutputDTO, UploadStatusDTO } from '@/application/UploadFiles/DTOs/FileTypes.js';
-import { UploadProgressEvent, type UploadProgressPayload } from '@/domain/events/UploadProgressEvent.js';
+import { UploadProgressEvent  } from '@/domain/events/UploadProgressEvent.js';
+import type { UploadProgressPayload } from '@/domain/events/UploadProgressType.js';
 
 //Node.js built-in modules
 import path from 'path';

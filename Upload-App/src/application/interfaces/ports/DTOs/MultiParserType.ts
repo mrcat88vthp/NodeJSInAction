@@ -15,6 +15,4 @@ export interface MultiPartParserFileDTO {
 export interface MultiPartParserHandlersDTO {
     onFile: (input: MultiPartParserFileDTO) => void;
     onField: (input: MultiPartParserFieldDTO) => void;
-    onFinish: (callback: () => void) => void;
-    onError: (callback: (err: Error) => void) => void;
 }

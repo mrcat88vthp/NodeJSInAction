@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Enterprise Upload</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0f1117;--surface:#161b22;--surface2:#1c2128;
+  --border:#30363d;--blue:#388bfd;--green:#3fb950;
+  --red:#f85149;--amber:#d29922;--text:#e6edf3;--muted:#8b949e;
+}
+body{background:var(--bg);color:var(--text);font-family:-apple-system,'Segoe UI',sans-serif;padding:2rem;font-size:14px}
+h1{font-size:17px;font-weight:600;margin-bottom:4px}
+.sub{color:var(--muted);font-size:12px;margin-bottom:1.5rem;font-family:monospace}
+.layout{display:grid;grid-template-columns:380px 1fr;gap:1.5rem;max-width:900px}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden}
+.card-head{padding:10px 14px;border-bottom:1px solid var(--border);font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;display:flex;align-items:center;gap:6px}
+.card-body{padding:14px}
+.field{margin-bottom:12px}
+label{display:block;font-size:11px;color:var(--muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:.4px}
+input[type=file]{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:7px;font-size:13px;cursor:pointer}
+.progress-track{background:var(--bg);border-radius:99px;height:7px;overflow:hidden;margin:8px 0 4px}
+.progress-fill{height:100%;background:var(--blue);border-radius:99px;transition:width .25s;width:0}
+.progress-fill.done{background:var(--green)}
+.progress-fill.fail{background:var(--red)}
+.progress-label{font-size:12px;color:var(--muted);min-height:18px}
+.status{font-size:13px;margin:10px 0;min-height:20px}
+.btn{width:100%;padding:8px;border:none;border-radius:6px;background:var(--blue);color:#fff;font-size:13px;font-weight:600;cursor:pointer;margin-top:4px;transition:opacity .15s}
+.btn:hover{opacity:.85}
+.btn:disabled{opacity:.4;cursor:default}
+.ws-bar{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);margin-bottom:1.25rem}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--red);transition:background .3s}
+.dot.on{background:var(--green)}
+.log{background:#010409;border-radius:6px;padding:10px 12px;font-family:monospace;font-size:11px;line-height:1.8;height:400px;overflow-y:auto}
+.ll{display:flex;gap:8px}
+.lt{color:#484f58;flex-shrink:0}
+.lfield{color:#a5d6ff}
+.lfile{color:#3fb950}
+.levent{color:#388bfd}
+.lwarn{color:#d29922}
+.lerr{color:#f85149}
+.lok{color:#3fb950}
+.linfo{color:#8b949e}
+</style>
+</head>
+<body>
+<h1>Enterprise Upload</h1>
+<p class="sub">Route → UseCase → IEventBus → Handler → ISocketGateway → Socket.IO</p>
+
+<div class="ws-bar">
+  <span class="dot" id="dot"></span>
+  <span id="ws-label">Đang kết nối WebSocket...</span>
+</div>
+
+<div class="layout">
+
+  <!-- Upload form -->
+  <div class="card">
+    <div class="card-head">⬆ Upload</div>
+    <div class="card-body">
+      <div class="field">
+        <label>File (JPG · PNG · WebP · GIF · PDF)</label>
+        <input type="file" id="fi" accept="image/*,.pdf">
+      </div>
+
+      <div class="progress-track">
+        <div class="progress-fill" id="pf"></div>
+      </div>
+      <div class="progress-label" id="pl">0%</div>
+      <div class="status" id="st">Chưa chọn file</div>
+
+      <button class="btn" id="btn" onclick="doUpload()">Upload</button>
+    </div>
+  </div>
+
+  <!-- Event log -->
+  <div class="card">
+    <div class="card-head">
+      🔵 Event log
+      <button onclick="clearLog()" style="margin-left:auto;background:none;border:none;color:var(--muted);cursor:pointer;font-size:11px">xóa</button>
+    </div>
+    <div class="card-body" style="padding:0">
+      <div class="log" id="log"></div>
+    </div>
+  </div>
+
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script>
+const socket = io();
+let socketReady = false;
+
+// ── Socket.IO connection ──────────────────────────────────────
+socket.on('connect', () => {
+  socketReady = true;
+  document.getElementById('dot').classList.add('on');
+  document.getElementById('ws-label').textContent = `Đã kết nối — socket.id: ${socket.id}`;
+  addLog('levent', 'WS connect', { socketId: socket.id });
+});
+
+socket.on('disconnect', () => {
+  socketReady = false;
+  document.getElementById('dot').classList.remove('on');
+  document.getElementById('ws-label').textContent = 'Mất kết nối';
+  addLog('lwarn', 'WS disconnect', {});
+});
+
+// ── Nhận UploadProgressEvent từ server ───────────────────────
+socket.on('upload:progress', (data) => {
+  addLog('lfile', 'upload:progress', data);
+
+  const pf = document.getElementById('pf');
+  const pl = document.getElementById('pl');
+  const st = document.getElementById('st');
+
+  if (data.status === 'uploading') {
+    pf.style.width  = data.percent + '%';
+    pf.className    = 'progress-fill';
+    pl.textContent  = `${data.percent}%  (${fmt(data.uploaded)} / ${fmt(data.total)})`;
+    st.textContent  = `Đang upload... ${data.fileName}`;
+
+  } else if (data.status === 'completed') {
+    pf.style.width  = '100%';
+    pf.className    = 'progress-fill done';
+    pl.textContent  = '100%';
+    st.textContent  = `✅ Hoàn tất: ${data.fileName}`;
+    document.getElementById('btn').disabled = false;
+
+  } else if (data.status === 'failed') {
+    pf.className   = 'progress-fill fail';
+    st.textContent = `❌ Thất bại: ${data.fileName}`;
+    document.getElementById('btn').disabled = false;
+  }
+});
+
+// ── Upload ────────────────────────────────────────────────────
+async function doUpload() {
+  const file = document.getElementById('fi').files[0];
+
+  if (!file) {
+    document.getElementById('st').textContent = '⚠ Chọn file trước';
+    return;
+  }
+  if (!socketReady) {
+    document.getElementById('st').textContent = '⚠ WebSocket chưa kết nối';
+    return;
+  }
+
+  const fd = new FormData();
+  fd.append('socketId', socket.id);    // server cần để emit lại đúng client
+  fd.append('fileSize', String(file.size)); // server cần để tính %
+  fd.append('file', file);
+
+  document.getElementById('btn').disabled = true;
+  document.getElementById('pf').style.width = '0%';
+  document.getElementById('pf').className   = 'progress-fill';
+
+  addLog('levent', 'fetch POST /api/upload', {
+    file: file.name,
+    size: fmt(file.size),
+    socketId: socket.id
+  });
+
+  try {
+    const res  = await fetch('/api/upload', { method: 'POST', body: fd });
+    const data = await res.json();
+    addLog('lok', 'server response', data);
+  } catch (err) {
+    addLog('lerr', 'fetch error', { message: err.message });
+    document.getElementById('btn').disabled = false;
+  }
+}
+
+function fmt(b) {
+  if (!b) return '?';
+  if (b < 1024)    return b + ' B';
+  if (b < 1048576) return (b/1024).toFixed(1) + ' KB';
+  return (b/1048576).toFixed(2) + ' MB';
+}
+
+function addLog(cls, event, data) {
+  const log  = document.getElementById('log');
+  const time = new Date().toTimeString().slice(0, 8);
+  const line = document.createElement('div');
+  line.className = 'll';
+  line.innerHTML =
+    `<span class="lt">${time}</span>` +
+    `<span class="${cls}">[${event}]</span>` +
+    `<span class="linfo">${JSON.stringify(data)}</span>`;
+  log.appendChild(line);
+  log.scrollTop = log.scrollHeight;
+}
+
+function clearLog() {
+  document.getElementById('log').innerHTML = '';
+}
+</script>
+</body>
+</html>

@@ -52,14 +52,13 @@ export function createUploadRoute(
                             socketId
                         })
                     );
-                },
-                onFinish: (callback) => {},
-                onError: (callback) => {},
+                }
             });
 
             const results = await Promise.all(uploadedFiles);
             res.status(200).json({
-                results
+                statusCode: 'UPLOAD_SUCCESS',
+                message: JSON.stringify(results, null, 2)
             });
             
         }
