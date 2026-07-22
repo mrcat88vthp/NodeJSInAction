@@ -1,0 +1,22 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Debug Upload-App (tsx)",
+      "type": "node",
+      "request": "launch",
+
+      "runtimeExecutable": "npx",
+      "runtimeArgs": [
+        "tsx",
+        "--inspect",
+        "src/server.ts"
+      ],
+
+      "cwd": "${workspaceFolder}/Upload-App",
+
+      "console": "integratedTerminal",
+      "skipFiles": ["<node_internals>/**"]
+    }
+  ]
+}

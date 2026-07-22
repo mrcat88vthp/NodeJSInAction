@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "prebuild": "rimraf dist",
-    "dev": "ts-node-dev --respawn src/server.ts",
+    "dev": "tsx watch src/server.ts",
     "build": "tsc && tsc-alias",
     "start": "node dist/server.js"
   },
@@ -24,6 +24,7 @@
     "ts-node": "^10.9.2",
     "ts-node-dev": "^2.0.0",
     "tsc-alias": "^1.9.1",
+    "tsx": "^4.23.1",
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.61.1"
   },
