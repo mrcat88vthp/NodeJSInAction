@@ -32,7 +32,7 @@ export function createUploadRoute(
                         socketId = field.value;
                     }
 
-                    if (field.name === 'totalSize') {
+                    if (field.name === 'fileSize') {
                         totalSize = parseInt(field.value, 10) || 0;
                     }
                 },
