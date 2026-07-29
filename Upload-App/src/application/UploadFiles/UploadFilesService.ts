@@ -49,7 +49,7 @@ export class UploadFilesService {
             //    PassThrough đứng giữa: source → PassThrough → writeStream
             //    Mỗi chunk qua PassThrough → publish event
             const trackedStream = this.createTrackedStream(
-                stream,
+                validatedStream,
                 {
                     socketId,
                     fileName: safeName,
@@ -176,7 +176,12 @@ export class UploadFilesService {
                 try {
                     detectedExt = await fileTypeFromBuffer(combined);
                 }
-                catch (error) {
+                catch (error: Error | any) {
+                    const errDetect: FileException = {
+                        errorCode: FileErrorCodes.GET_FILE_TYPE_FAILED,
+                        errorMessage: `Failed to detect file type ${error.message}.`
+                    };
+                    fail(new Error(JSON.stringify(errDetect, null, 2)));
                     return;
                 }
 
