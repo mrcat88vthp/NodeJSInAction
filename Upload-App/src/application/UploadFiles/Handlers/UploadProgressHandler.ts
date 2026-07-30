@@ -9,6 +9,8 @@ export class UploadProgressHandler implements IEventHandler<UploadProgressEvent>
 
         const {socketId, ...data} = event.payload;
 
+        console.log(`[UploadProgressHandler] Emitting event "${event.eventName}" to socket ${socketId}:`, data);
+
         this.socketGateway.emitToClient(
             socketId,
             event.eventName,
