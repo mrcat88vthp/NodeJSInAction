@@ -12,6 +12,7 @@ import path from 'path';
 import { Readable, PassThrough } from 'stream';
 import { randomUUID } from 'crypto';
 import { fileTypeFromBuffer } from 'file-type';
+import { DelayTransform } from '@/infrastructure/stream/delayTransform.js';
 
 
 export class UploadFilesService {
@@ -44,12 +45,17 @@ export class UploadFilesService {
         try {
             //4. validate nội dung thực trước khi track/lưu
             const validatedStream = await this.validateFileTypeByContent_ver_2(stream);
+            let debug = process.env.UPLOAD_DEBUG_DELAY === 'TRUE';
+
+            const sourceForPipeline = debug
+                ? validatedStream.pipe(new DelayTransform(5000)) // Thêm delay 5s cho mỗi chunk để test progress    
+                : validatedStream;
 
             // 5. Bọc stream với progress tracking
             //    PassThrough đứng giữa: source → PassThrough → writeStream
             //    Mỗi chunk qua PassThrough → publish event
             const trackedStream = this.createTrackedStream(
-                validatedStream,
+                sourceForPipeline,
                 {
                     socketId,
                     fileName: safeName,
